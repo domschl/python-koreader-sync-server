@@ -1,0 +1,15 @@
+[Unit]
+Description=Python KOReader Sync Server
+After=network.target
+
+[Service]
+Type=simple
+User=koreader-sync
+Group=koreader-sync
+ExecStart=/usr/bin/koreader-sync-server --config /etc/koreader-sync-server/config.toml
+Restart=on-failure
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

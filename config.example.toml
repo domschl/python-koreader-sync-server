@@ -1,0 +1,23 @@
+[server]
+bind_address = "0.0.0.0"
+port = 8080
+tls = false
+cert_file = ""
+key_file = ""
+
+[user]
+username = "reader"
+password = "secretpassword"
+
+[storage]
+state_file = "~/.config/koreader-sync-server/state.json"
+
+[library]
+ebook_repo = "~/MetaLibrary"
+scan_interval_seconds = 1800
+watchdog_enabled = true
+
+[biograph]
+enabled = true
+url = "http://nalanda:8000/"
+api_token = ""

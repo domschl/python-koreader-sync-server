@@ -1,0 +1,29 @@
+[project]
+name = "python-koreader-sync-server"
+version = "0.1.0"
+description = "A lightweight KOReader sync server backend in Python"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.13"
+dependencies = [
+    "aiohttp>=3.14.3",
+    "watchdog>=6.0.0",
+]
+
+[project.scripts]
+koreader-sync-server = "koreader_sync_server.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/koreader_sync_server"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+

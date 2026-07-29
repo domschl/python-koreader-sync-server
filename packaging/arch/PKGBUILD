@@ -1,0 +1,25 @@
+# PKGBUILD for python-koreader-sync-server
+pkgname=python-koreader-sync-server
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A lightweight KOReader sync server backend in Python with reverse ebook resolution and Biograph telemetry"
+arch=('any')
+url="https://github.com/koreader/koreader-sync-server"
+license=('GPL3')
+depends=('python' 'python-aiohttp' 'python-watchdog')
+makedepends=('python-build' 'python-installer' 'python-hatchling' 'python-wheel')
+source=("$pkgname-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+
+  install -Dm644 systemd/koreader-sync-server.service "$pkgdir/usr/lib/systemd/system/koreader-sync-server.service"
+  install -Dm644 config.example.toml "$pkgdir/etc/koreader-sync-server/config.toml.example"
+}

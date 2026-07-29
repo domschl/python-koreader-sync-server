@@ -1,0 +1,24 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build / Packaging
+dist/
+build/
+*.egg-info/
+
+# Local configuration & runtime state
+config.toml
+state.json
+*.tmp
