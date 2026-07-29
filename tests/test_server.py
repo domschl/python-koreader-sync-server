@@ -114,3 +114,57 @@ async def test_kosync_endpoints(test_config: Config) -> None:
         await client.close()
         await biograph.stop()
         library.stop()
+
+
+@pytest.mark.asyncio
+async def test_cross_hash_correlation(test_config: Config) -> None:
+    # 1. Create a dummy ebook in repo
+    book_file = test_config.library.ebook_repo / "testbook.epub"
+    book_file.write_bytes(b"Test book content for correlation test" * 50)
+
+    storage = StorageManager(test_config.storage.state_file)
+    storage.ensure_user(test_config.user.username, test_config.user.password)
+
+    library = LibraryResolver(test_config.library.ebook_repo, watchdog_enabled=False)
+    library.start()
+
+    biograph = BiographClient(test_config.biograph)
+    await biograph.start()
+
+    server_inst = KOSyncServer(test_config, storage, library, biograph)
+    client = TestClient(TestServer(server_inst.app))
+    await client.start_server()
+
+    try:
+        from koreader_sync_server.hasher import filename_md5, partial_koreader_md5
+
+        fn_hash = filename_md5("testbook.epub")
+        content_hash = partial_koreader_md5(book_file)
+        assert content_hash is not None
+
+        auth_headers = {"x-auth-user": "testuser", "x-auth-key": "testpassword"}
+
+        # Client A updates progress using content hash
+        put_payload = {
+            "document": content_hash,
+            "progress": "/body/p[5]",
+            "percentage": 0.50,
+            "device": "DeviceA",
+            "device_id": "devA",
+            "timestamp": 1722250000,
+        }
+        resp = await client.put("/syncs/progress", headers=auth_headers, json=put_payload)
+        assert resp.status == 200
+
+        # Client B fetches progress using filename hash
+        resp = await client.get(f"/syncs/progress/{fn_hash}", headers=auth_headers)
+        assert resp.status == 200
+        get_data = await resp.json()
+        assert get_data["document"] == fn_hash
+        assert get_data["percentage"] == 0.50
+        assert get_data["progress"] == "/body/p[5]"
+
+    finally:
+        await client.close()
+        await biograph.stop()
+        library.stop()

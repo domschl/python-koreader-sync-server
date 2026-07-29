@@ -157,6 +157,15 @@ class LibraryResolver:
         with self.lock:
             return self.hash_to_ebook.get(document_hash)
 
+    def get_alias_hashes(self, document_hash: str) -> list[str]:
+        """Return all known hash aliases (filename hash, content hash) for a given document hash."""
+        with self.lock:
+            info = self.hash_to_ebook.get(document_hash)
+            if not info:
+                return [document_hash]
+            hashes = self.file_to_hashes.get(info.abs_path, [document_hash])
+            return list(hashes)
+
     def _index_file(
         self,
         file_path: Path,

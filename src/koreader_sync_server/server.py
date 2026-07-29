@@ -91,11 +91,12 @@ class KOSyncServer:
         document_hash = request.match_info.get("document", "")
         logger.info("Get progress request from user '%s' for doc hash: %s", username, document_hash)
 
+        alias_hashes = self.library.get_alias_hashes(document_hash)
         resolved_info = self.library.resolve_hash(document_hash)
         if resolved_info:
-            logger.info("Resolved document hash %s -> filename: %s", document_hash, resolved_info.rel_path)
+            logger.info("Resolved document hash %s -> filename: %s (aliases: %s)", document_hash, resolved_info.rel_path, alias_hashes)
 
-        progress_data = self.storage.get_progress(username, document_hash)
+        progress_data = self.storage.get_progress(username, document_hash, alias_hashes=alias_hashes)
         return web.json_response(progress_data, status=200)
 
     async def handle_put_progress(self, request: web.Request) -> web.Response:
@@ -114,7 +115,8 @@ class KOSyncServer:
 
         logger.info("Put progress request from user '%s' for doc %s: %s", username, document_hash, data)
 
-        self.storage.put_progress(username, document_hash, data)
+        alias_hashes = self.library.get_alias_hashes(document_hash)
+        self.storage.put_progress(username, document_hash, data, alias_hashes=alias_hashes)
 
         resolved_info = self.library.resolve_hash(document_hash)
         if resolved_info:

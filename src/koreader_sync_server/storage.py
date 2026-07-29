@@ -114,13 +114,24 @@ class StorageManager:
             return True
         return False
 
-    def get_progress(self, username: str, document_hash: str) -> dict[str, Any]:
-        """Get reading progress for a user and document. Creates zero entry if missing."""
+    def get_progress(self, username: str, document_hash: str, alias_hashes: list[str] | None = None) -> dict[str, Any]:
+        """Get reading progress for a user and document or any of its alias hashes."""
+        aliases = list(alias_hashes) if alias_hashes else [document_hash]
+        if document_hash not in aliases:
+            aliases.append(document_hash)
+
         with self.lock:
             user_data = self.data["users"].setdefault(username, {"password": "", "documents": {}})
             docs = user_data.setdefault("documents", {})
 
-            if document_hash not in docs:
+            best_doc: dict[str, Any] | None = None
+            for h in aliases:
+                if h in docs:
+                    d = docs[h]
+                    if best_doc is None or float(d.get("timestamp", 0)) > float(best_doc.get("timestamp", 0)):
+                        best_doc = d
+
+            if best_doc is None:
                 progress_payload: dict[str, Any] = {
                     "document": document_hash,
                     "progress": "0",
@@ -132,12 +143,30 @@ class StorageManager:
                 docs[document_hash] = progress_payload
                 self._save()
                 return progress_payload
-            return dict(docs[document_hash])
 
-    def put_progress(self, username: str, document_hash: str, payload: dict[str, Any]) -> None:
-        """Store reading progress for a user and document."""
+            result = dict(best_doc)
+            result["document"] = document_hash
+            return result
+
+    def put_progress(
+        self,
+        username: str,
+        document_hash: str,
+        payload: dict[str, Any],
+        alias_hashes: list[str] | None = None,
+    ) -> None:
+        """Store reading progress for a user across document_hash and all its alias hashes."""
+        aliases = list(alias_hashes) if alias_hashes else [document_hash]
+        if document_hash not in aliases:
+            aliases.append(document_hash)
+
         with self.lock:
             user_data = self.data["users"].setdefault(username, {"password": "", "documents": {}})
             docs = user_data.setdefault("documents", {})
-            docs[document_hash] = payload
+
+            for h in aliases:
+                p = dict(payload)
+                p["document"] = h
+                docs[h] = p
+
             self._save()
