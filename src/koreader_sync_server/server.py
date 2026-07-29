@@ -117,7 +117,12 @@ class KOSyncServer:
         self.storage.put_progress(username, document_hash, data)
 
         resolved_info = self.library.resolve_hash(document_hash)
-        rel_filename = resolved_info.rel_path if resolved_info else None
+        if resolved_info:
+            rel_filename = resolved_info.rel_path
+            logger.info("Resolved document hash %s -> '%s'", document_hash, rel_filename)
+        else:
+            rel_filename = None
+            logger.warning("Document hash %s not found in ebook library (%s)", document_hash, self.library.repo_dir)
 
         progress_str = str(data.get("progress", ""))
         percentage = float(data.get("percentage", 0.0))

@@ -13,7 +13,7 @@ password = "secretpassword"
 state_file = "/var/lib/koreader-sync-server/state.json"
 
 [library]
-ebook_repo = "~/MetaLibrary"
+ebook_repo = "/home/dsc/MetaLibrary"
 scan_interval_seconds = 1800
 watchdog_enabled = true
 

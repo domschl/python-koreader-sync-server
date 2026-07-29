@@ -11,6 +11,7 @@ ConfigurationDirectory=koreader-sync-server
 ExecStart=/usr/bin/koreader-sync-server --config /etc/koreader-sync-server/config.toml
 Restart=on-failure
 RestartSec=5s
+ProtectHome=read-only
 Environment=PYTHONUNBUFFERED=1
 
 [Install]
