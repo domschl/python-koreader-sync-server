@@ -1,0 +1,2 @@
+# Systemd sysusers configuration for koreader-sync-server
+u koreader-sync - "KOReader Sync Server User" /var/lib/koreader-sync-server

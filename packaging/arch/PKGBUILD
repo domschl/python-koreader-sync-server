@@ -21,5 +21,6 @@ package() {
   python -m installer --destdir="$pkgdir" dist/*.whl
 
   install -Dm644 systemd/koreader-sync-server.service "$pkgdir/usr/lib/systemd/system/koreader-sync-server.service"
+  install -Dm644 systemd/koreader-sync-server.sysusers "$pkgdir/usr/lib/sysusers.d/koreader-sync-server.conf"
   install -Dm644 config.example.toml "$pkgdir/etc/koreader-sync-server/config.toml.example"
 }
