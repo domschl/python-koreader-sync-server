@@ -181,18 +181,12 @@ class LibraryResolver:
         hashes: list[str] = []
         info = EbookInfo(rel_path=rel_path, abs_path=abs_path)
 
-        # 1. Basename MD5 hash (KOReader standard filename sync hash)
+        # 1. Basename MD5 hash (KOReader filename matching)
         basename_hash = filename_md5(file_path.name)
         hash_map[basename_hash] = info
         hashes.append(basename_hash)
 
-        # 2. Relative path MD5 hash
-        relpath_hash = filename_md5(rel_path)
-        if relpath_hash not in hashes:
-            hash_map[relpath_hash] = info
-            hashes.append(relpath_hash)
-
-        # 3. Content partial MD5 hash (KOReader binary content sync hash)
+        # 2. Content partial MD5 hash (KOReader binary content matching)
         content_hash = partial_koreader_md5(file_path)
         if content_hash and content_hash not in hashes:
             hash_map[content_hash] = info
