@@ -66,12 +66,20 @@ async def test_kosync_endpoints(test_config: Config) -> None:
         resp = await client.get("/users/auth", headers={"x-auth-user": "testuser", "x-auth-key": "wrongpass"})
         assert resp.status == 401
 
-        # 5. GET /users/auth with valid headers
+        # 5. GET /users/auth with valid headers (raw password)
         auth_headers = {"x-auth-user": "testuser", "x-auth-key": "testpassword"}
         resp = await client.get("/users/auth", headers=auth_headers)
         assert resp.status == 200
         data = await resp.json()
         assert data == {"authorized": "OK"}
+
+        # 5b. GET /users/auth with SHA256 hashed password
+        import hashlib
+        sha_key = hashlib.sha256(b"testpassword").hexdigest()
+        sha_headers = {"x-auth-user": "testuser", "x-auth-key": sha_key}
+        resp = await client.get("/users/auth", headers=sha_headers)
+        assert resp.status == 200
+        assert (await resp.json()) == {"authorized": "OK"}
 
         # 6. GET /syncs/progress/doc123 (should return initial 0 progress)
         resp = await client.get("/syncs/progress/doc123", headers=auth_headers)

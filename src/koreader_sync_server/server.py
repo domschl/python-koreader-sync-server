@@ -48,9 +48,10 @@ class KOSyncServer:
 
         valid, err_msg = self.storage.authenticate(username, password)
         if not valid:
+            logger.warning("Auth failure from %s: %s (x-auth-user: '%s', x-auth-key length: %d)", request.remote, err_msg, username, len(password or ""))
             status_code = 401 if "PWF" in (err_msg or "") else 400
             return web.json_response({"error": err_msg}, status=status_code), None
-        return None, username
+        return None, username.strip() if username else None
 
     async def handle_root(self, request: web.Request) -> web.Response:
         return web.Response(text="KOSync server", content_type="text/plain")
@@ -69,12 +70,12 @@ class KOSyncServer:
         if not username or not password:
             return web.json_response({"error": "Username and password required"}, status=400)
 
-        created = self.storage.create_user(username, password)
-        if not created:
-            return web.json_response({"error": "User already exists"}, status=400)
+        clean_user = username.strip()
+        clean_pass = password.strip()
+        self.storage.create_or_update_user(clean_user, clean_pass)
 
-        logger.info("User '%s' registered via /users/create", username)
-        return web.json_response({"username": username}, status=201)
+        logger.info("User '%s' registered/updated via /users/create", clean_user)
+        return web.json_response({"username": clean_user}, status=201)
 
     async def handle_user_auth(self, request: web.Request) -> web.Response:
         err_resp, username = self._auth(request)

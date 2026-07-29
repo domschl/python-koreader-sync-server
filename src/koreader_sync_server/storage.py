@@ -52,10 +52,16 @@ class StorageManager:
                 users[username] = {"password": password, "documents": {}}
                 logger.info("Created user '%s' in state storage", username)
                 self._save()
-            elif users[username].get("password") != password:
-                users[username]["password"] = password
-                logger.info("Updated password for user '%s' in state storage", username)
-                self._save()
+
+    def create_or_update_user(self, username: str, password: str) -> bool:
+        """Create a new user or update password for existing user."""
+        with self.lock:
+            users = self.data["users"]
+            existing_docs = users.get(username, {}).get("documents", {})
+            users[username] = {"password": password, "documents": existing_docs}
+            logger.info("User '%s' registered/updated in state storage", username)
+            self._save()
+            return True
 
     def create_user(self, username: str, password: str) -> bool:
         """Create a new user if not present. Returns True if created, False if user exists."""
@@ -74,13 +80,39 @@ class StorageManager:
         if not password:
             return False, "No password in request"
 
+        clean_user = username.strip()
+        clean_pass = password.strip()
+
         with self.lock:
-            user_data = self.data["users"].get(username)
+            user_data = self.data["users"].get(clean_user)
             if not user_data:
-                return False, "Authentication failure (UNE)"
-            if user_data.get("password") != password:
-                return False, "Authentication failure (PWF)"
+                return False, f"Authentication failure for '{clean_user}' (UNE - User Not Exist)"
+
+            stored_pass = str(user_data.get("password", ""))
+            if not self._verify_password(clean_pass, stored_pass):
+                return False, f"Authentication failure for '{clean_user}' (PWF - Password Mismatch)"
+
             return True, None
+
+    @staticmethod
+    def _verify_password(given_key: str, stored_password: str) -> bool:
+        if given_key == stored_password:
+            return True
+        import hashlib
+
+        # Check SHA-256 of stored password
+        if hashlib.sha256(stored_password.encode("utf-8")).hexdigest() == given_key:
+            return True
+        # Check MD5 of stored password
+        if hashlib.md5(stored_password.encode("utf-8")).hexdigest() == given_key:
+            return True
+        # Check if given_key SHA-256 matches stored password
+        if hashlib.sha256(given_key.encode("utf-8")).hexdigest() == stored_password:
+            return True
+        # Check if given_key MD5 matches stored password
+        if hashlib.md5(given_key.encode("utf-8")).hexdigest() == stored_password:
+            return True
+        return False
 
     def get_progress(self, username: str, document_hash: str) -> dict[str, Any]:
         """Get reading progress for a user and document. Creates zero entry if missing."""
