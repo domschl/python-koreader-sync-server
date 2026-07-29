@@ -19,6 +19,7 @@ build/
 *.egg-info/
 packaging/arch/src/
 packaging/arch/pkg/
+packaging/arch/python-koreader-sync-server/
 *.pkg.tar.zst
 
 # Local configuration & runtime state
