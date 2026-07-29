@@ -60,8 +60,9 @@ KOReader clients communicate over HTTP/HTTPS REST endpoints using standard custo
 KOReader identifies books using two hash methods:
 
 ### 4.1 Filename Hash
-- Standard MD5 hex digest of the relative ebook filename path (UTF-8 encoded):
-  `hashlib.md5(filename.encode('utf-8')).hexdigest()`
+- Standard MD5 hex digest of the ebook filename:
+  - **Basename Hash** (KOReader client standard): `hashlib.md5(file_path.name.encode('utf-8')).hexdigest()`
+  - **Relative Path Hash**: `hashlib.md5(rel_path.encode('utf-8')).hexdigest()`
 
 ### 4.2 Partial Content MD5 Hash (`partial_koreader_md5`)
 - Sample size: 1024 bytes.
