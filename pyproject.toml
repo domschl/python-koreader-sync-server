@@ -10,6 +10,10 @@ dependencies = [
     "watchdog>=6.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/domschl/python-koreader-sync-server"
+Repository = "git@github.com:domschl/python-koreader-sync-server.git"
+
 [project.scripts]
 koreader-sync-server = "koreader_sync_server.__main__:main"
 

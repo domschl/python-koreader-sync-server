@@ -39,7 +39,7 @@ It allows KOReader instances on e-ink readers (Kindle, Kobo, PocketBook, Android
 
 ```bash
 # Clone the repository
-git clone https://github.com/koreader/python-koreader-sync-server.git
+git clone git@github.com:domschl/python-koreader-sync-server.git
 cd python-koreader-sync-server
 
 # Install dependencies and sync virtualenv using uv
