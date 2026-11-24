@@ -121,17 +121,29 @@ class LibraryResolver:
 
         new_hash_to_ebook: dict[str, EbookInfo] = {}
         new_file_to_hashes: dict[str, list[str]] = {}
+        failed_content_hashes = 0
 
-        for root, _, files in os.walk(self.repo_dir):
+        def _on_walk_error(err: OSError) -> None:
+            logger.warning("Failed to traverse ebook library directory '%s': %s", err.filename, err)
+
+        for root, _, files in os.walk(self.repo_dir, onerror=_on_walk_error):
             for file_name in files:
                 file_path = Path(root) / file_name
                 if file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
-                    self._index_file(file_path, new_hash_to_ebook, new_file_to_hashes)
+                    if not self._index_file(file_path, new_hash_to_ebook, new_file_to_hashes):
+                        failed_content_hashes += 1
 
         with self.lock:
             self.hash_to_ebook = new_hash_to_ebook
             self.file_to_hashes = new_file_to_hashes
         logger.info("Indexed %d ebook files (%d hashes total)", len(new_file_to_hashes), len(new_hash_to_ebook))
+        if failed_content_hashes:
+            logger.warning(
+                "Failed to compute binary content hash for %d of %d ebook files "
+                "(binary hash matching will not resolve them; check file/directory permissions)",
+                failed_content_hashes,
+                len(new_file_to_hashes),
+            )
 
     def add_file(self, file_path: Path) -> None:
         """Add or update a single file in the index."""
@@ -171,12 +183,13 @@ class LibraryResolver:
         file_path: Path,
         hash_map: dict[str, EbookInfo],
         file_map: dict[str, list[str]],
-    ) -> None:
+    ) -> bool:
         try:
             abs_path = str(file_path.resolve())
             rel_path = str(file_path.relative_to(self.repo_dir))
-        except Exception:
-            return
+        except Exception as e:
+            logger.warning("Failed to resolve ebook path '%s': %s", file_path, e)
+            return False
 
         hashes: list[str] = []
         info = EbookInfo(rel_path=rel_path, abs_path=abs_path)
@@ -193,3 +206,4 @@ class LibraryResolver:
             hashes.append(content_hash)
 
         file_map[abs_path] = hashes
+        return content_hash is not None

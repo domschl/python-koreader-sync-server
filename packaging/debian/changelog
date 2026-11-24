@@ -1,3 +1,9 @@
+python-koreader-sync-server (0.1.1-1) unstable; urgency=medium
+
+  * Log warnings when binary partial MD5 calculation or directory traversal fails during ebook library indexing.
+
+ -- Developer <dev@localhost>  Tue, 24 Nov 2026 08:56:00 +0100
+
 python-koreader-sync-server (0.1.0-1) unstable; urgency=medium
 
   * Initial release of python-koreader-sync-server.

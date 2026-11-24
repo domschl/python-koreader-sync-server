@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
+import os
 import tempfile
 import time
 from pathlib import Path
+
+import pytest
 
 from koreader_sync_server.hasher import filename_md5, partial_koreader_md5
 from koreader_sync_server.library import LibraryResolver
@@ -46,3 +50,30 @@ def test_library_resolver_and_watchdog() -> None:
 
         finally:
             resolver.stop()
+
+
+def test_library_resolver_warns_on_unreadable_content_hash(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    if os.geteuid() == 0:
+        pytest.skip("Root ignores file permission checks")
+
+    subdir = tmp_path / "Science Fiction"
+    subdir.mkdir()
+    book = subdir / "book.epub"
+    book.write_bytes(b"Unreadable ebook content" * 50)
+    subdir.chmod(0o444)
+
+    try:
+        resolver = LibraryResolver(repo_dir=tmp_path, watchdog_enabled=False)
+        with caplog.at_level(logging.WARNING, logger="koreader_sync_server"):
+            resolver.rescan()
+
+        # Filename hash is indexed, but warning is emitted for missing binary content hash
+        assert resolver.resolve_hash(filename_md5("book.epub")) is not None
+        assert any(
+            "Failed to compute binary content hash for 1 of 1 ebook files" in rec.message
+            for rec in caplog.records
+        )
+    finally:
+        subdir.chmod(0o755)

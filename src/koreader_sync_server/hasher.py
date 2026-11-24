@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
+import stat
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def filename_md5(filename: str) -> str:
@@ -17,9 +21,10 @@ def partial_koreader_md5(filepath: str | Path) -> str | None:
     Reads 1024-byte chunks at offsets 1024 << (2 * i) for i in range(-1, 11).
     """
     path = Path(filepath)
-    if not path.is_file():
-        return None
     try:
+        st = path.stat()
+        if not stat.S_ISREG(st.st_mode):
+            return None
         with open(path, "rb") as f:
             step = 1024
             size = 1024
@@ -37,5 +42,9 @@ def partial_koreader_md5(filepath: str | Path) -> str | None:
                 else:
                     break
             return md5_hash.hexdigest()
-    except Exception:
+    except OSError as e:
+        logger.warning("Failed to compute partial MD5 for '%s': %s", path, e)
+        return None
+    except Exception as e:
+        logger.warning("Unexpected error computing partial MD5 for '%s': %s", path, e)
         return None

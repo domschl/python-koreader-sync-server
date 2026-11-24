@@ -1,6 +1,6 @@
 [project]
 name = "python-koreader-sync-server"
-version = "0.1.0"
+version = "0.1.1"
 description = "A lightweight KOReader sync server backend in Python"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }

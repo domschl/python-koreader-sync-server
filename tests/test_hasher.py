@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import logging
+import os
 import tempfile
 from pathlib import Path
+
+import pytest
 
 from koreader_sync_server.hasher import filename_md5, partial_koreader_md5
 
@@ -25,3 +29,23 @@ def test_partial_koreader_md5() -> None:
         assert len(h) == 32
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+def test_partial_koreader_md5_logs_warning_on_unreadable_file(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    if os.geteuid() == 0:
+        pytest.skip("Root ignores file permission checks")
+
+    unreadable = tmp_path / "secret.epub"
+    unreadable.write_bytes(b"Secret ebook content" * 50)
+    unreadable.chmod(0o000)
+
+    try:
+        with caplog.at_level(logging.WARNING, logger="koreader_sync_server.hasher"):
+            result = partial_koreader_md5(unreadable)
+
+        assert result is None
+        assert any("Failed to compute partial MD5" in rec.message for rec in caplog.records)
+    finally:
+        unreadable.chmod(0o644)
