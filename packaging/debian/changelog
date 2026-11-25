@@ -1,3 +1,9 @@
+python-koreader-sync-server (0.2.0-1) unstable; urgency=medium
+
+  * Enrich Biograph reading events with book_uuid and canonical metadata from .knrs-catalog.json, with watchdog hot-reload.
+
+ -- Developer <dev@localhost>  Wed, 25 Nov 2026 10:00:00 +0100
+
 python-koreader-sync-server (0.1.1-1) unstable; urgency=medium
 
   * Log warnings when binary partial MD5 calculation or directory traversal fails during ebook library indexing.

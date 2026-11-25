@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import tempfile
 from pathlib import Path
 
@@ -168,3 +170,113 @@ async def test_cross_hash_correlation(test_config: Config) -> None:
         await client.close()
         await biograph.stop()
         library.stop()
+
+
+@pytest.mark.asyncio
+async def test_put_progress_enriches_biograph_event_from_catalog(tmp_path: Path) -> None:
+    from koreader_sync_server.hasher import filename_md5, partial_koreader_md5
+    from koreader_sync_server.library import CATALOG_FILENAME
+
+    received_events: list[dict] = []
+
+    async def fake_biograph_events(request: web.Request) -> web.Response:
+        received_events.append(await request.json())
+        return web.json_response({"id": 1}, status=201)
+
+    bio_app = web.Application()
+    bio_app.router.add_post("/events/", fake_biograph_events)
+    bio_server = TestServer(bio_app)
+    await bio_server.start_server()
+
+    repo_dir = tmp_path / "repo"
+    series_dir = repo_dir / "Science Fiction"
+    series_dir.mkdir(parents=True)
+    book_file = series_dir / "Frank Herbert - Dune.epub"
+    book_file.write_bytes(b"Dune epub bytes" * 80)
+
+    content_hash = partial_koreader_md5(book_file)
+    assert content_hash is not None
+    fn_hash = filename_md5(book_file.name)
+    book_uuid = "99999999-8888-7777-6666-555555555555"
+
+    (repo_dir / CATALOG_FILENAME).write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "books": {
+                    book_uuid: {
+                        "title": "Dune",
+                        "authors": ["Frank Herbert"],
+                        "series": "Science Fiction",
+                        "files": [
+                            {
+                                "rel_path": "Science Fiction/Frank Herbert - Dune.epub",
+                                "format": "epub",
+                                "filename_md5": fn_hash,
+                                "koreader_partial_md5": content_hash,
+                            }
+                        ],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    cfg = Config(
+        server=ServerConfig(bind_address="127.0.0.1", port=0),
+        user=UserConfig(username="testuser", password="testpassword"),
+        storage=StorageConfig(state_file=tmp_path / "state.json"),
+        library=LibraryConfig(ebook_repo=repo_dir, watchdog_enabled=False),
+        biograph=BiographConfig(enabled=True, url=str(bio_server.make_url("/")), api_token="tok"),
+    )
+
+    storage = StorageManager(cfg.storage.state_file)
+    storage.ensure_user(cfg.user.username, cfg.user.password)
+    library = LibraryResolver(cfg.library.ebook_repo, watchdog_enabled=False)
+    library.start()
+    biograph = BiographClient(cfg.biograph)
+    await biograph.start()
+
+    server_inst = KOSyncServer(cfg, storage, library, biograph)
+    client = TestClient(TestServer(server_inst.app))
+    await client.start_server()
+
+    try:
+        resp = await client.put(
+            "/syncs/progress",
+            headers={"x-auth-user": "testuser", "x-auth-key": "testpassword"},
+            json={
+                "document": content_hash,
+                "progress": "/body/chapter[1]",
+                "percentage": 0.25,
+                "device": "Kobo Libra",
+                "device_id": "kobo1",
+                "timestamp": 1722260000,
+            },
+        )
+        assert resp.status == 200
+
+        # Wait briefly for background task to deliver Biograph POST
+        for _ in range(20):
+            if received_events:
+                break
+            await asyncio.sleep(0.05)
+
+        assert len(received_events) == 1
+        ev = received_events[0]
+        assert ev["ev_type"] == "koreader-progress"
+        assert ev["resource_uri"] == f"knrs://book/{book_uuid}"
+        assert "Dune" in ev["summary"]
+        content = ev["content"]
+        assert content["book_uuid"] == book_uuid
+        assert content["title"] == "Dune"
+        assert content["authors"] == ["Frank Herbert"]
+        assert content["author"] == "Frank Herbert"
+        assert content["series"] == "Science Fiction"
+        assert content["filename"] == "Science Fiction/Frank Herbert - Dune.epub"
+    finally:
+        await client.close()
+        await biograph.stop()
+        library.stop()
+        await bio_server.close()

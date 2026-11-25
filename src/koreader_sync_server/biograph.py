@@ -45,6 +45,10 @@ class BiographClient:
         device: str,
         device_id: str,
         client_timestamp: int | float,
+        book_uuid: str | None = None,
+        title: str | None = None,
+        authors: list[str] | None = None,
+        series: str | None = None,
     ) -> None:
         """Send a structured reading progress event to Biograph."""
         if not self.config.enabled or not self.session:
@@ -53,27 +57,40 @@ class BiographClient:
         target_url = self.config.url.rstrip("/") + "/events/"
         now_utc = datetime.now(timezone.utc).isoformat()
 
-        display_name = filename if filename else document_hash[:10]
+        display_name = title or filename or document_hash[:10]
         pct_display = f"{percentage * 100:.1f}%" if percentage <= 1.0 else f"{percentage:.1f}%"
         summary = f"Reading progress on '{display_name}': {pct_display}"
+
+        content: dict[str, Any] = {
+            "user": username,
+            "document_hash": document_hash,
+            "filename": filename,
+            "progress": progress,
+            "percentage": percentage,
+            "device": device,
+            "device_id": device_id,
+            "timestamp": client_timestamp,
+        }
+        if book_uuid:
+            content["book_uuid"] = book_uuid
+        if title:
+            content["title"] = title
+        if authors:
+            content["authors"] = list(authors)
+            content["author"] = ", ".join(authors)
+        if series:
+            content["series"] = series
 
         payload: dict[str, Any] = {
             "timestamp": now_utc,
             "ev_type": "koreader-progress",
             "source_host": self.hostname,
             "source_app": "koreader-sync-server",
-            "content": {
-                "user": username,
-                "document_hash": document_hash,
-                "filename": filename,
-                "progress": progress,
-                "percentage": percentage,
-                "device": device,
-                "device_id": device_id,
-                "timestamp": client_timestamp,
-            },
+            "content": content,
             "summary": summary,
         }
+        if book_uuid:
+            payload["resource_uri"] = f"knrs://book/{book_uuid}"
 
         try:
             async with self.session.post(target_url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as resp:

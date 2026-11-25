@@ -1,7 +1,7 @@
 # PKGBUILD for python-koreader-sync-server
 pkgname=python-koreader-sync-server
-pkgver=0.1.1
-pkgrel=2
+pkgver=0.2.0
+pkgrel=1
 pkgdesc="A lightweight KOReader sync server backend in Python with reverse ebook resolution and Biograph telemetry"
 arch=('any')
 url="https://github.com/domschl/python-koreader-sync-server"

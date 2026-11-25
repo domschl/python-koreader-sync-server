@@ -143,6 +143,10 @@ class KOSyncServer:
                 device=device,
                 device_id=device_id,
                 client_timestamp=ts,
+                book_uuid=resolved_info.book_uuid if resolved_info else None,
+                title=resolved_info.title if resolved_info else None,
+                authors=resolved_info.authors if resolved_info else None,
+                series=resolved_info.series if resolved_info else None,
             )
         )
 
